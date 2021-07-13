@@ -1,9 +1,7 @@
-from App import app
-from flask import  render_template
+from App import app, db
+from App.models import Measurements
+from flask import render_template
 @app.route("/")
 def hello_world():
-    dictionary = [
-        {"temp": 25},
-        {"temp": 30}
-    ]
+    dictionary = db.session.query(Measurements).all()
     return render_template("home.html", lista=dictionary)

@@ -6,6 +6,9 @@
     </title>
 </head>
 <body>
-{%for }
+{% for item in lista %}
+    Temperature: {{item.temperature}} Humidity: {{item.humidity}} Pollution: {{item.pollution}}
+<br>
+{% endfor %}
 </body>
 </html>
