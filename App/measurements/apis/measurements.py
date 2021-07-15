@@ -6,21 +6,23 @@ from flask import request
 from App.measurements.constants import PAGE, PER_PAGE
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
+from App.measurements.schemas import MeasurementResponseSchema, MeasurementPostSchema, MeasurementPatchSchema, \
+    MeasurementMetaSchema, MeasurementPaginationSchema
+
+measurement_response_schema = MeasurementResponseSchema()
+measurement_post_schema = MeasurementPostSchema()
+measurement_patch_schema = MeasurementPatchSchema()
+measurement_collection_response_schema = MeasurementResponseSchema(many=True)
+measurement_meta_schema = MeasurementMetaSchema()
+measurement_pagination_schema = MeasurementPaginationSchema()
 
 
 @measurements_bp.get('')
 def getAll():
-    page = int(request.args.get("page", PAGE))
-    per_page = int(request.args.get("per_page", PER_PAGE))
-    measurements = db.session.query(Measurements).paginate(page=page, per_page=per_page)
-    response = []
-    for measurement in measurements.items:
-        data = {"id": measurement.id,
-                "temperature": measurement.temperature,
-                "pollution": measurement.pollution,
-                "humidity": measurement.humidity}
-        response['results'].append(data)
-    return json.dumps(response)
+    schema_load = measurement_meta_schema.load(request.args.to_dict())
+    measurements = db.session.query(Measurements).paginate(page=schema_load.get('page'),
+                                                           per_page=schema_load.get('per_page'))
+    return measurement_pagination_schema.dump(measurements)
 
 
 @measurements_bp.get("<int:id>")
@@ -28,12 +30,8 @@ def getbyid(id):
     measurement = db.session.query(Measurements).filter(Measurements.id == id).first()
     if not measurement:
         return NotFound(description="Measurement not found")
-    if measurement:
-        data = {"id": measurement.id,
-                "temperature": measurement.temperature,
-                "pollution": measurement.pollution,
-                "humidity": measurement.humidity}
-        return json.dumps(data)
+    else:
+        return measurement_response_schema.dump(measurement)
 
 
 @measurements_bp.get("/latest")
@@ -42,50 +40,35 @@ def getlast():
     if not measurement:
         return NotFound(description="Measurement not found")
     if measurement:
-        data = {"id": measurement.id,
-                "temperature": measurement.temperature,
-                "pollution": measurement.pollution,
-                "humidity": measurement.humidity}
-        return json.dumps(data)
+        return measurement_response_schema.dump(measurement)
 
 
 @measurements_bp.post("")
 def insertmeasurment():
     data = request.get_json()
-    temperature = data.get('temperature')
-    humidity = data.get('humidity')
-    pollution = data.get('pollution')
-    measurement = Measurements(temperature=temperature, humidity=humidity, pollution=pollution)
+    postdata = measurement_post_schema.load(data)
+    measurement = Measurements(postdata.temperature, postdata.humidity,
+                               postdata.pollution)
     db.session.add(measurement)
     db.session.commit()
-    if not measurement:
-        return NotFound(description="Measurement not found")
-    if measurement:
-        data = {"id": measurement.id,
-                "temperature": measurement.temperature,
-                "pollution": measurement.pollution,
-                "humidity": measurement.humidity}
-        return json.dumps(data)
+    return measurement_response_schema.dump(measurement)
 
 
 @measurements_bp.patch("<int:id>")
 def patchmeasurment(id):
     data = request.get_json()
+    patchdata = measurement_patch_schema.load(data)
     measurement = db.session.query(Measurements).filter(Measurements.id == id).first()
     if not measurement:
         return NotFound(description="Measurement not found")
-    if data.get('temperature'):
-        measurement.temperature = data.get('temperature')
-    if data.get('humidity'):
-        measurement.humidity = data.get('humidity')
-    if data.get('pollution'):
-        measurement.pollution = data.get('pollution')
+    if patchdata['temperature']:
+        measurement.temperature = patchdata['temperature']
+    if patchdata['humidity']:
+        measurement.humidity = patchdata['humidity']
+    if patchdata['pollution']:
+        measurement.pollution = patchdata['pollution']
     db.session.commit()
-    data = {"id": measurement.id,
-            "temperature": measurement.temperature,
-            "pollution": measurement.pollution,
-            "humidity": measurement.humidity}
-    return json.dumps(data)
+    return measurement_response_schema.dump(measurement)
 
 
 
