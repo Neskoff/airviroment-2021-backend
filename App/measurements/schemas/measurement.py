@@ -42,7 +42,7 @@ class MeasurementMetaSchema(Schema):
 
 class MeasurementPaginationSchema(Schema):
     meta = fields.Method('get_meta')
-    result = fields.Method('get_data')
+    items = fields.List(fields.Nested(MeasurementResponseSchema()), data_key='response')
 
     @staticmethod
     def get_meta(data):
@@ -52,6 +52,3 @@ class MeasurementPaginationSchema(Schema):
         response["per_page"] = data.per_page
         return MeasurementMetaSchema().dump(response)
 
-    @staticmethod
-    def get_data(data):
-        return MeasurementResponseSchema(many=True).dump(data.items)
