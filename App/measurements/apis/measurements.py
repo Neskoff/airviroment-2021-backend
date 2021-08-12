@@ -1,10 +1,13 @@
+import sqlalchemy
+
 from App import db
+import datetime
 from App.measurements import measurements_bp
 from App.measurements.models import Measurements
 import json
 from flask import request
 from App.measurements.constants import PAGE, PER_PAGE
-from sqlalchemy import desc
+from sqlalchemy import desc, func, and_, cast, select
 from werkzeug.exceptions import NotFound
 from App.measurements.schemas import MeasurementResponseSchema, MeasurementPostSchema, MeasurementPatchSchema, \
     MeasurementMetaSchema, MeasurementPaginationSchema
@@ -71,9 +74,13 @@ def patchmeasurment(id):
     return measurement_response_schema.dump(measurement)
 
 
-
-
-
-
-
-
+@measurements_bp.get("/filter")
+def filterdata():
+    date = request.args.get('date')
+    starttime = request.args.get('starttime')
+    endtime = request.args.get('endtime')
+    measurements = db.session.query(Measurements).filter(
+        and_(func.to_char(Measurements.created, 'YYYY-MM-DD') == date,
+             and_(cast(func.left(func.to_char(Measurements.created, 'HH24:MI:SS'), 2), sqlalchemy.Integer) >= starttime),
+             (cast(func.left(func.to_char(Measurements.created, 'HH24:MI:SS'), 2), sqlalchemy.Integer) <= endtime)))
+    return measurement_collection_response_schema.dumps(measurements)
